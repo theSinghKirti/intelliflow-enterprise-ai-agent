@@ -32,8 +32,8 @@ The vector dimension differs per provider, and a vector store index is built
 for exactly one dimension. The reference project's placeholder emitted
 1536-dim vectors to match ``text-embedding-3-small``. The ``local`` default
 emits **384**-dim vectors. Reusing a 1536-dim index with the local provider
-raises a dimension error from the store; the reverse — a 384-dim index with a
-hosted provider — is the more dangerous direction, because some stores truncate
+raises a dimension error from the store; the reverse â€” a 384-dim index with a
+hosted provider â€” is the more dangerous direction, because some stores truncate
 instead of rejecting. :func:`get_embedding_dimension` exists so callers can
 assert against the configured index rather than discover this at query time.
 """

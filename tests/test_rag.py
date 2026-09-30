@@ -19,22 +19,22 @@ import textwrap
 import numpy as np
 import pytest
 
-import rag
-from rag import (
+import app.rag as rag
+from app.rag import (
     describe,
     get_embedding_dimension,
     get_embeddings,
     ingest_document,
     retrieve,
 )
-from rag.embeddings import EmbeddingConfigurationError
-from rag.ingestion import _chunk_text, _clean_text
-from rag.models import RetrievedChunk, RetrievalResult
+from app.rag.embeddings import EmbeddingConfigurationError
+from app.rag.ingestion import _chunk_text, _clean_text
+from app.rag.models import RetrievedChunk, RetrievalResult
 
 EMBEDDING_MODEL_DIMENSION = 384
 
 
-# ── Fixtures ──────────────────────────────────────────────────────────────
+# â”€â”€ Fixtures â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 POLICY_TEXT = textwrap.dedent(
     """\
@@ -67,7 +67,7 @@ def store(tmp_path_factory):
     rag.reset_store()
 
 
-# ── Embedding provider ────────────────────────────────────────────────────
+# â”€â”€ Embedding provider â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def test_default_provider_is_local_and_needs_no_key():
     info = describe()
@@ -126,7 +126,7 @@ def test_unknown_provider_raises():
             os.environ["EMBEDDING_PROVIDER"] = old
 
 
-# ── Cleaning and chunking ─────────────────────────────────────────────────
+# â”€â”€ Cleaning and chunking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def test_clean_text_strips_nulls_and_normalises_newlines():
     raw = "line1\r\nline2\r\x00line3"
@@ -147,7 +147,7 @@ def test_chunking_reassembles_to_full_text():
     assert joined.replace(" ", "") == text.replace(" ", "")
 
 
-# ── Ingestion ────────────────────────────────────────────────────────────
+# â”€â”€ Ingestion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def test_ingest_produces_chunks_with_full_metadata(store):
     assert store.chunk_count >= 3
@@ -168,7 +168,7 @@ def test_ingest_rejects_unsupported_extension(tmp_path):
         ingest_document(p)
 
 
-# ── Retrieval: discrimination ─────────────────────────────────────────────
+# â”€â”€ Retrieval: discrimination â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def test_paraphrased_refund_query_finds_refund_chunk(store):
     result = retrieve("can I get my money back if I do not like it?", k=3)
@@ -217,7 +217,7 @@ def test_retrieval_is_deterministic(store):
     assert [round(c.score, 6) for c in a.chunks] == [round(c.score, 6) for c in b.chunks]
 
 
-# ── PDF ingestion (page numbers) ─────────────────────────────────────────
+# â”€â”€ PDF ingestion (page numbers) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 PDF_TEXT = textwrap.dedent(
     """\
@@ -236,7 +236,6 @@ def _build_pdf(path):
     Keeps the test suite free of reportlab/pypdf-writer requirements; the
     bytes are a hand-built minimal PDF with a correct xref table.
     """
-    import zlib
 
     def _page(text_lines: list[str], font_size: int = 11) -> bytes:
         body = ["BT", f"/F1 {font_size} Tf", "72 720 Td", "16 TL"]
@@ -298,7 +297,7 @@ def _corpus_for(path):
     """
     from langchain_core.vectorstores import InMemoryVectorStore
 
-    from rag.embeddings import get_embeddings
+    from app.rag.embeddings import get_embeddings
 
     private = InMemoryVectorStore(embedding=get_embeddings())
     ingest_document(path, store=private, chunk_size=200, chunk_overlap=20)
@@ -330,7 +329,7 @@ def test_pdf_citation_includes_page_number(tmp_path):
     assert "p." in result.citations()[0]
 
 
-# ── Citation metadata round-trip (audit P3) ──────────────────────────────
+# â”€â”€ Citation metadata round-trip (audit P3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def test_citation_metadata_survives_the_round_trip(store):
     result = retrieve("how fast is express delivery?", k=1)
@@ -350,7 +349,7 @@ def test_citations_are_deduplicated_and_ordered(store):
     assert cites == [f"{c.source}#{c.chunk_id}" for c in result.chunks]
 
 
-# ── Grounding prompt block (audit L11) ────────────────────────────────────
+# â”€â”€ Grounding prompt block (audit L11) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def test_context_block_is_fenced_and_labelled_as_data(store):
     result = retrieve("how fast is express delivery?", k=2)

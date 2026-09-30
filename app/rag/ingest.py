@@ -4,19 +4,19 @@ Usage
 -----
 List the configured providers and dimensions::
 
-    python -m rag.ingest
+    python -m app.rag.ingest
 
 Ingest one or more files::
 
-    python -m rag.ingest data/handbook.pdf data/policy.txt
+    python -m app.rag.ingest data/handbook.pdf data/policy.txt
 
 Ingest every supported file in a directory::
 
-    python -m rag.ingest --directory data/
+    python -m app.rag.ingest --directory data/
 
 Check what is stored::
 
-    python -m rag.ingest --search "what is the refund window?"
+    python -m app.rag.ingest --search "what is the refund window?"
 
 Vector store
 ------------
@@ -31,9 +31,9 @@ import argparse
 import sys
 from pathlib import Path
 
-from rag.embeddings import describe
-from rag.ingestion import ingest_document
-from rag.retriever import retrieve
+from app.rag.embeddings import describe
+from app.rag.ingestion import ingest_document
+from app.rag.retriever import retrieve
 
 SUPPORTED_SUFFIXES = (".pdf", ".txt", ".md")
 
@@ -58,7 +58,7 @@ def _collect(paths: list[str], directory: str | None) -> list[Path]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="python -m rag.ingest",
+        prog="python -m app.rag.ingest",
         description="Ingest documents into the RAG vector store.",
     )
     parser.add_argument("paths", nargs="*", help="Document paths (.pdf/.txt/.md)")

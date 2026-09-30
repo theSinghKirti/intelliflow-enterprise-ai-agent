@@ -14,6 +14,14 @@ venv/
 .venv/
 pip-log.txt
 
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+.coverage.*
+
 # Jupyter
 .ipynb_checkpoints
 *.ipynb

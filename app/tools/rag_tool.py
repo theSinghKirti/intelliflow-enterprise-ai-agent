@@ -17,7 +17,7 @@ Behaviour changes versus the reference version:
 
 from langchain_core.tools import tool
 
-from rag.retriever import retrieve
+from app.rag.retriever import retrieve
 
 
 @tool

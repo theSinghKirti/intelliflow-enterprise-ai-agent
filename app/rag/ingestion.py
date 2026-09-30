@@ -1,4 +1,4 @@
-"""Document ingestion — load → clean → chunk → embed → store.
+"""Document ingestion â€” load â†’ clean â†’ chunk â†’ embed â†’ store.
 
 The upstream reference project had **no ingestion pipeline at all** (audit P2).
 This is the first time this codebase can actually write to a vector store from
@@ -7,19 +7,19 @@ its own code. The design is test-first: it works with an in-memory vector store
 or a pluggable backend.
 
 Supported formats (minimal, defensible):
-- ``.txt``, ``.md`` — UTF-8 text
-- ``.pdf`` — ``pypdf.PdfReader``
+- ``.txt``, ``.md`` â€” UTF-8 text
+- ``.pdf`` â€” ``pypdf.PdfReader``
 
 Chunking:
 - ``RecursiveCharacterTextSplitter`` (from ``langchain-text-splitters``),
   with sensible defaults for retrieval.
 
 Metadata:
-- ``document_id`` — stable UUID per document
+- ``document_id`` â€” stable UUID per document
 - ``filename``
-- ``page_number`` — ``None`` for text files, 1-based for PDFs
-- ``chunk_id`` — deterministic ``{document_id}:{chunk_index}``
-- ``source`` — human-readable string, duplicated for convenience
+- ``page_number`` â€” ``None`` for text files, 1-based for PDFs
+- ``chunk_id`` â€” deterministic ``{document_id}:{chunk_index}``
+- ``source`` â€” human-readable string, duplicated for convenience
 
 Citations are preserved at retrieval time (audit P3).
 
@@ -42,9 +42,9 @@ from langchain_core.vectorstores import VectorStore
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pypdf import PdfReader
 
-from rag.embeddings import get_embedding_dimension, get_embeddings
-from rag.models import ChunkMetadata, IngestionResult
-from rag.retriever import get_store
+from app.rag.embeddings import get_embedding_dimension
+from app.rag.models import ChunkMetadata, IngestionResult
+from app.rag.retriever import get_store
 
 
 def _loop_is_running() -> bool:

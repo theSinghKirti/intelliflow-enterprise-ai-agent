@@ -10,7 +10,7 @@ Grounding rule
 --------------
 If the best match falls below ``RETRIEVAL_THRESHOLD``, ``has_evidence`` is
 ``False``. The caller must answer: "I don't have enough information in the
-provided documents to answer that." — not hallucinate from near-misses. The
+provided documents to answer that." â€” not hallucinate from near-misses. The
 ``context_block()`` produced by :class:`rag.models.RetrievalResult` renders
 this explicitly.
 
@@ -35,14 +35,13 @@ Design
 from __future__ import annotations
 
 import os
-from typing import Sequence
 
 from langchain_core.documents import Document
 from langchain_core.vectorstores import InMemoryVectorStore, VectorStore
 from langchain_pinecone import PineconeVectorStore
 
-from rag.embeddings import get_embeddings
-from rag.models import RetrievedChunk, RetrievalResult
+from app.rag.embeddings import get_embeddings
+from app.rag.models import RetrievedChunk, RetrievalResult
 
 
 def _get_retrieval_threshold() -> float:
