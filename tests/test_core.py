@@ -296,6 +296,22 @@ def test_openapi_is_generated(client):
     assert "/chat" in r.json()["paths"]
 
 
+def test_health_does_not_leak_environment_into_reported_settings():
+    from fastapi.testclient import TestClient
+
+    import os
+
+    application = create_app(Settings.from_env({}, include_dotenv=False))
+    try:
+        os.environ["DATABASE_URL"] = "postgresql://real/host"
+        r = TestClient(application).get("/health")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["memory"] == "unconfigured"
+    finally:
+        os.environ.pop("DATABASE_URL", None)
+
+
 def test_app_factory_does_not_validate_at_import():
     """create_app must not require credentials or reach the network."""
     application = create_app(Settings.from_env({}, include_dotenv=False))

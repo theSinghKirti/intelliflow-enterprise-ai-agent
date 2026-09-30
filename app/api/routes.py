@@ -47,17 +47,35 @@ VERSION = "2.0.0"
 router = APIRouter()
 
 
+def _resolve_settings(request: Request) -> Settings:
+    """The settings this application was actually built with.
+
+    ``create_app`` stores its resolved ``Settings`` on ``app.state``, and that
+    snapshot is the single source of truth. The fallback to a fresh
+    ``from_env()`` only applies if the router was mounted on an app that never
+    went through the factory.
+
+    Reading the ambient environment here instead would make ``/health`` report
+    on whatever ``.env`` happens to be on disk rather than on the running
+    configuration - so a process built with no ``DATABASE_URL`` could report
+    ``"memory": "postgres"`` purely because a developer's ``.env`` supplied
+    one. A health probe that misreports its own configuration is worse than one
+    that reports nothing.
+    """
+    from app.core.config import Settings as _S
+
+    return getattr(request.app.state, "settings", None) or _S.from_env()
+
+
 @router.get("/health", response_model=HealthResponse, summary="Liveness and configuration probe")
-async def health() -> HealthResponse:
+async def health(request: Request) -> HealthResponse:
     """Report service health and which providers are active.
 
     Deliberately reports configuration rather than deep dependency health: a
     probe that calls Postgres on every request is a load amplifier, and
     ``/chat`` already surfaces real failures.
     """
-    from app.core.config import Settings as _S
-
-    settings = _S.from_env()
+    settings = _resolve_settings(request)
     return HealthResponse(
         status="ok",
         version=VERSION,
@@ -74,9 +92,7 @@ async def chat(payload: ChatRequest, request: Request) -> ChatResponse:
     Returns the reply together with the chosen route, whether the answer was
     grounded in retrieved documents, and the citations used.
     """
-    from app.core.config import Settings as _S
-
-    settings: Settings = getattr(request.app.state, "settings", None) or _S.from_env()
+    settings = _resolve_settings(request)
     thread_id = payload.resolved_thread_id(settings)
 
     with request_context(thread_id=thread_id):
