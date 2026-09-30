@@ -1,6 +1,13 @@
-"""LLM and embedding instances — imported across all nodes."""
+"""LLM instances — imported across all nodes.
+
+Embeddings deliberately live elsewhere. The reference implementation kept a
+``MockEmbeddings`` class here that returned all-zero vectors and was wired
+directly into the retrieval path, which made every similarity score identical
+and therefore meaningless. Embedding providers are now selected by
+``rag.embeddings.get_embeddings()``; see that module for the rationale and the
+index-dimension implications.
+"""
 from langchain_openai import ChatOpenAI
-from langchain_core.embeddings import Embeddings
 import config
 
 _base = dict(base_url=config.NVIDIA_BASE_URL, api_key=config.NVIDIA_API_KEY, model=config.NVIDIA_MODEL)
@@ -16,21 +23,3 @@ vision_LLM = ChatOpenAI(
     api_key=config.NVIDIA_API_KEY,
     model="meta/llama-3.2-90b-vision-instruct",
 )
-
-
-class MockEmbeddings(Embeddings):
-    """Placeholder embeddings — no external API required.
-    Returns fixed-size zero vectors so RAG runs without OpenAI credentials.
-    Dimension (1536) matches OpenAI's text-embedding-3-small for Pinecone index compatibility.
-    Replace with a real embedding model when ready for production RAG quality.
-    """
-    _DIM = 1536
-
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        return [[0.0] * self._DIM for _ in texts]
-
-    def embed_query(self, text: str) -> list[float]:
-        return [0.0] * self._DIM
-
-
-embeddings = MockEmbeddings()

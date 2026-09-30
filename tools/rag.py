@@ -1,24 +1,50 @@
-"""RAG tool — hybrid retrieval from Pinecone vector store."""
+"""RAG tool — grounded retrieval over ingested documents.
+
+Replaces the reference implementation, which embedded queries with all-zero
+vectors and returned a flattened string with discarded metadata.
+
+Behaviour changes versus the reference version:
+
+- Real embeddings via the provider factory (``rag.embeddings``).
+- Citation metadata preserved (``filename``, ``page_number``, ``chunk_id``).
+- Relevance threshold: when no chunk clears it, the tool says so explicitly
+  instead of returning weak near-misses.
+- Retrieval errors are returned as a short, generic notice. The reference
+  version interpolated ``f"RAG error: {e}"`` into LLM context, leaking
+  internal detail into both the context and the user-visible answer
+  (audit L4).
+"""
+
 from langchain_core.tools import tool
-from langchain_pinecone import PineconeVectorStore
-from llms import embeddings
-import config
+
+from rag.retriever import retrieve
 
 
 @tool
 def RAG(query: str) -> str:
-    """Retrieve relevant content from previously uploaded documents."""
-    try:
-        docs = PineconeVectorStore(
-            index_name=config.PINECONE_INDEX,
-            embedding=embeddings,
-            pinecone_api_key=config.PINECONE_API_KEY
-        ).as_retriever(
-            search_type="mmr",
-            search_kwargs={"k": config.RETRIEVER_K, "fetch_k": config.RETRIEVER_FETCH_K, "lambda_mult": 0.7}
-        ).invoke(query)
+    """Search the ingested document knowledge base.
 
-        return "".join(f"Source {i+1}:\n{d.page_content.strip()}\n\n" for i, d in enumerate(docs)) \
-               or "No relevant content found."
-    except Exception as e:
-        return f"RAG error: {e}"
+    Use this for questions about uploaded/internal documents. Returns cited
+    excerpts, or a clear notice when the documents do not cover the topic.
+    """
+    try:
+        result = retrieve(query)
+    except Exception:
+        # Deliberately opaque. Do not interpolate the exception: it can carry
+        # connection strings, index names, or library internals into the
+        # model's context and from there into the user-visible answer.
+        return (
+            "Document search is currently unavailable. Answer without "
+            "referencing the knowledge base, and tell the user the search "
+            "could not be completed."
+        )
+
+    if not result.has_evidence:
+        return (
+            "No relevant information was found in the knowledge base for "
+            f"this query. {result.reason} Do not guess - tell the user the "
+            "documents do not cover this."
+        )
+
+    parts = [result.context_block(), "", "Sources: " + "; ".join(result.citations())]
+    return "\n".join(parts)
