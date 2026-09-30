@@ -14,10 +14,6 @@ sections marked **environment-dependent** below need credentials that are not
 in this repository. See [Known limitations](#known-limitations) before drawing
 conclusions from anything stated here.
 
-A LangGraph-based AI assistant that combines structured agent routing, real
-semantic-embedding RAG, document ingestion, vector retrieval, tool
-orchestration, FastAPI APIs, and persistent conversation-state architecture.
-
 ---
 
 ## Current capabilities
@@ -53,8 +49,7 @@ Implemented and exercised by the test suite:
   when set; the graph still builds when it is not
 - **Windows compatibility** — the selector event loop policy is installed
   before any async `psycopg` work
-- **Automated RAG testing** — 109 tests, none of which require a hosted
-  credential
+- **Automated testing** — 110 tests, none of which require a hosted credential
 
 ## Environment-dependent
 
@@ -138,9 +133,16 @@ app/
 ## Quick start
 
 ```bash
+git clone https://github.com/theSinghKirti/intelliflow-enterprise-ai-agent.git
+cd intelliflow-enterprise-ai-agent
+
+python -m venv .venv && source .venv/Scripts/activate   # Windows
 pip install -r requirements.txt -r requirements-dev.txt
 cp .env.example .env          # fill in what you need; see the table above
 ```
+
+Python 3.11 is pinned in `.python-version`. Embeddings run locally on CPU, so
+nothing above requires a GPU.
 
 Run the server:
 
@@ -156,16 +158,33 @@ curl http://127.0.0.1:8000/health
 #  "vector_store":"memory","memory":"postgres"}
 ```
 
-Ingest documents and try retrieval without any hosted service:
+Ingest documents and query them in one command, with no hosted service and no
+API key:
+
+```bash
+python -m app.rag.ingest --directory data/ --search "what is the refund window?"
+```
+
+Ask a single question against documents you already have on disk:
 
 ```bash
 python -m app.rag.ingest --directory data/
 python -m app.rag.ingest --search "what is the refund window?"
 ```
 
-Note that `VECTOR_STORE=memory` is per-process, so documents ingested by the
-CLI are not visible to a separately started server. Set `VECTOR_STORE=pinecone`
-to persist across processes.
+Note that `VECTOR_STORE=memory` (the default) is per-process, so documents
+ingested by one command are not visible to a separately started server, and a
+bare `--search` in a fresh process finds nothing. Combine ingest and search in
+one invocation, or set `VECTOR_STORE=pinecone` to persist across processes.
+
+Send a chat turn:
+
+```bash
+curl -X POST http://127.0.0.1:8000/chat \
+  -H "Content-Type: application/json" \
+  -H "X-Request-ID: demo-1" \
+  -d '{"query":"Summarise the refund policy.","thread_id":"demo-thread"}'
+```
 
 ## Tests
 
@@ -178,8 +197,8 @@ ruff check app tests
 | File | Covers |
 |---|---|
 | `tests/test_rag.py` | 28 tests: real embeddings are non-degenerate, deterministic, L2-normalised and discriminative; ingestion, chunking, PDF page numbers, citations, thresholding, context fencing |
-| `tests/test_agents.py` | routing schema and normalisation, classification fallback, edge conditions, the iteration cap, answer-prompt construction |
-| `tests/test_core.py` | settings validation, event-loop policy, JSON logging and correlation, and the HTTP layer end to end |
+| `tests/test_agents.py` | 41 tests: routing schema and normalisation, classification fallback, edge conditions, the iteration cap, answer-prompt construction |
+| `tests/test_core.py` | 41 tests: settings validation, event-loop policy, JSON logging and correlation, and the HTTP layer end to end |
 
 No test requires NVIDIA, Pinecone, Tavily, PostgreSQL, or a network call. The
 tests that would need those are not present rather than skipped-and-green: the

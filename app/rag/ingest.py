@@ -12,17 +12,23 @@ Ingest one or more files::
 
 Ingest every supported file in a directory::
 
-    python -m app.rag.ingest --directory data/
+        python -m app.rag.ingest --directory data/
 
-Check what is stored::
+    Ingest and query in one command (works with no hosted service)::
 
-    python -m app.rag.ingest --search "what is the refund window?"
+        python -m app.rag.ingest --directory data/ --search "refund window"
+
+    Query an already-populated store::
+
+        python -m app.rag.ingest --search "what is the refund window?"
 
 Vector store
 ------------
 Defaults to ``VECTOR_STORE=memory``, which is per-process: documents ingested
-by this CLI are **not** visible to a separately started API server. For
-persistence set ``VECTOR_STORE=pinecone`` in the environment before ingesting.
+by this CLI are **not** visible to a separately started API server. Because the
+store is cached for the lifetime of the process, ``--directory`` and ``--search``
+in the *same* invocation do see each other. For cross-process persistence set
+``VECTOR_STORE=pinecone`` in the environment before ingesting.
 """
 
 from __future__ import annotations
@@ -79,10 +85,49 @@ def main(argv: list[str] | None = None) -> int:
     )
     import os
 
-    print(f"vector store: {os.getenv('VECTOR_STORE', 'memory')}")
+    store_kind = os.getenv("VECTOR_STORE", "memory")
+    print(f"vector store: {store_kind}")
     print()
 
+    failures = 0
+    ingested: list[Path] = []
+
+    if args.paths or args.directory:
+        targets = _collect(args.paths, args.directory)
+        if not targets:
+            print("nothing to ingest - pass file paths or --directory", file=sys.stderr)
+            return 1
+        for target in targets:
+            try:
+                result = ingest_document(
+                    target,
+                    chunk_size=args.chunk_size,
+                    chunk_overlap=args.chunk_overlap,
+                )
+                ingested.append(target)
+                print(f"OK   {result.summary()}")
+            except Exception as exc:
+                failures += 1
+                print(f"FAIL {target}: {type(exc).__name__}: {exc}", file=sys.stderr)
+
+        if store_kind.lower() == "memory" and not failures:
+            print()
+            print(
+                "note: VECTOR_STORE=memory is per-process. These chunks are not "
+                "visible to a separately started server - set VECTOR_STORE=pinecone "
+                "to persist."
+            )
+        print()
+
     if args.search:
+        if store_kind.lower() == "memory" and not ingested:
+            print(
+                "warning: VECTOR_STORE=memory starts empty in every process, so a "
+                "search on its own cannot see anything. Combine it with "
+                "--directory/paths in the same command, or set VECTOR_STORE=pinecone.",
+                file=sys.stderr,
+            )
+            print()
         result = retrieve(args.search)
         print(f"query: {args.search!r}")
         print(f"reason: {result.reason}")
@@ -94,31 +139,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"         {chunk.text[:110]}...")
         return 0
 
-    targets = _collect(args.paths, args.directory)
-    if not targets:
+    if not ingested and not failures:
         print("nothing to ingest - pass file paths or --directory", file=sys.stderr)
         return 1
-
-    failures = 0
-    for target in targets:
-        try:
-            result = ingest_document(
-                target,
-                chunk_size=args.chunk_size,
-                chunk_overlap=args.chunk_overlap,
-            )
-            print(f"OK   {result.summary()}")
-        except Exception as exc:
-            failures += 1
-            print(f"FAIL {target}: {type(exc).__name__}: {exc}", file=sys.stderr)
-
-    if os.getenv("VECTOR_STORE", "memory").lower() == "memory" and not failures:
-        print()
-        print(
-            "note: VECTOR_STORE=memory is per-process. These chunks are not "
-            "visible to a separately started server - set VECTOR_STORE=pinecone "
-            "to persist."
-        )
     return 1 if failures else 0
 
 
